@@ -1,36 +1,50 @@
 import 'package:flutter/material.dart';
-import 'learn.dart'; // Import the home view
+import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:dart_openai/dart_openai.dart';
+import 'learn.dart';
 
 /// Flutter code sample for [BottomNavigationBar].
 
-void main() => runApp(const BottomNavigationBarExampleApp());
+Future main() async {
+  // To load the .env file contents into dotenv.
+  // NOTE: fileName defaults to .env and can be omitted in this case.
+  // Ensure that the filename corresponds to the path in step 1 and 2.
+  await dotenv.load(fileName: ".env");
+  String? openAiApiKey = dotenv.env['OPEN_AI_API_KEY'];
+  openAiApiKey ??= "lol";
+  OpenAI.apiKey = openAiApiKey;
+  final openAI = OpenAI.instance;
+  runApp(PardonApp(openAI: openAI));
+}
 
-class BottomNavigationBarExampleApp extends StatelessWidget {
-  const BottomNavigationBarExampleApp({super.key});
+class PardonApp extends StatelessWidget {
+  final OpenAI openAI;
+  PardonApp({super.key, required this.openAI});
 
   @override
   Widget build(BuildContext context) {
-    return const MaterialApp(
-      home: BottomNavigationBarExample(),
+    return MaterialApp(
+      home: PardonMyItalian(openAI: openAI),
     );
   }
 }
 
-class BottomNavigationBarExample extends StatefulWidget {
-  const BottomNavigationBarExample({super.key});
+class PardonMyItalian extends StatefulWidget {
+  final OpenAI openAI;
+  const PardonMyItalian({super.key, required this.openAI});
 
   @override
-  State<BottomNavigationBarExample> createState() =>
-      _BottomNavigationBarExampleState();
+  State<PardonMyItalian> createState() =>
+      _PardonMyItalianState();
 }
 
-class _BottomNavigationBarExampleState
-    extends State<BottomNavigationBarExample> {
+class _PardonMyItalianState
+    extends State<PardonMyItalian> {
   int _selectedIndex = 0;
   static const TextStyle optionStyle =
       TextStyle(fontSize: 30, fontWeight: FontWeight.bold);
-  static final List<Widget> _widgetOptions = <Widget>[
-    LearnView(),
+  late List<Widget> _widgetOptions = <Widget>[
+    LearnView(openAI: widget.openAI),
     Text(
       'What is this view',
       style: optionStyle,
@@ -81,3 +95,5 @@ class _BottomNavigationBarExampleState
     );
   }
 }
+
+

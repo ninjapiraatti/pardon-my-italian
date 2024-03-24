@@ -44,7 +44,7 @@ class _PardonMyItalianState
   static const TextStyle optionStyle =
       TextStyle(fontSize: 30, fontWeight: FontWeight.bold);
   late List<Widget> _widgetOptions = <Widget>[
-    LearnView(openAI: widget.openAI),
+    ChatGPTView(openAI: widget.openAI),
     Text(
       'What is this view',
       style: optionStyle,

@@ -1,130 +1,97 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:dart_openai/dart_openai.dart';
-import 'dart:convert';
 
-class LearnView extends StatefulWidget {
+class ChatGPTView extends StatefulWidget {
   final OpenAI openAI;
 
-  LearnView({required this.openAI});
+  ChatGPTView({required this.openAI});
 
   @override
-  _LearnViewState createState() => _LearnViewState(openAI: openAI);
+  _ChatGPTViewState createState() => _ChatGPTViewState();
 }
 
+class _ChatGPTViewState extends State<ChatGPTView> {
+  final TextEditingController _promptController = TextEditingController();
+  bool _isLoading = false;
+  String _response = '';
 
-class _LearnViewState extends State<LearnView> {
-  final OpenAI openAI;
-  String _wordEnglish = '';
-  String _wordTranslated = '';
-  String _exampleSentence = '';
-  List<OpenAIChatCompletionChoiceMessageContentItemModel>? _apiResponse;
-
-  _LearnViewState({required this.openAI});
-  late String _selectedValue;
-  List<String> options = ['Italian', 'Swedish', 'Ukranian']; // Example options
-
-  @override
-  void initState() {
-    super.initState();
-    _selectedValue = options.first;
-  }
-
-  void _onDropdownChanged(String? newValue) {
-    if (newValue == null) {
+  void _sendPrompt() async {
+    if (_promptController.text.isEmpty) {
       return;
     }
     setState(() {
-      _selectedValue = newValue;
+      _isLoading = true;
     });
-    _makeApiCall(openAI, newValue);
-  }
-
-  void _makeApiCall(OpenAI openAI, String value) async {
-    final systemMessage = OpenAIChatCompletionChoiceMessageModel(
+    
+    // Define the initial system message
+    final OpenAIChatCompletionChoiceMessageModel systemMessage = OpenAIChatCompletionChoiceMessageModel(
       content: [
         OpenAIChatCompletionChoiceMessageContentItemModel.text(
-          "You are given a topic and a language. Teach the user a random word on the topic. Return your answer in JSON as follows: {'word_english': 'the chosen random word in English', 'word_language': 'the translation of the chosen random word to the language the user chose' 'in_sentence': 'use the word ina a sentence in the user chosen language'}",
+          "You are a helpful AI assistant, ready to help the user in their request. At the end of each answer, you will teach the user a word in Italian and use it in a sentence. Try to make it on the same subject as the user's request."
         ),
       ],
       role: OpenAIChatMessageRole.assistant,
     );
-    final userMessage = OpenAIChatCompletionChoiceMessageModel(
-      content: [
-        OpenAIChatCompletionChoiceMessageContentItemModel.text(
-          "Hello, teach me a word in $value on the topic of 'agriculture'",
-        ),
 
-        //! image url contents are allowed only for models with image support such gpt-4.
-        // OpenAIChatCompletionChoiceMessageContentItemModel.imageUrl(
-        //   "https://placehold.co/600x400",
-        // ),
+    // Define the user's message
+    final OpenAIChatCompletionChoiceMessageModel userMessage = OpenAIChatCompletionChoiceMessageModel(
+      content: [
+        OpenAIChatCompletionChoiceMessageContentItemModel.text(_promptController.text),
       ],
       role: OpenAIChatMessageRole.user,
     );
-    final requestMessages = [
-      systemMessage,
-      userMessage,
-    ];
-    OpenAIChatCompletionModel chatCompletion = await openAI.chat.create(
-      model: "gpt-3.5-turbo-1106",
-      responseFormat: {"type": "json_object"},
-      seed: 6,
-      messages: requestMessages,
-      temperature: 0.2,
-      maxTokens: 500,
+
+    // Combine system and user messages for the API call
+    final chatCompletion = await widget.openAI.chat.create(
+      model: "gpt-4-turbo-preview",
+      messages: [systemMessage, userMessage], // Send both messages
+      temperature: 0.7,
+      maxTokens: 1500,
     );
-    print("Making API call");
-    print(chatCompletion.choices.first.message); // ...
-    print(chatCompletion.systemFingerprint); // ...
-    print(chatCompletion.usage.promptTokens); // ...
-    print(chatCompletion.id); // ...
+
     setState(() {
-      String _response = chatCompletion.choices.first.message.content?.first.text as String;
-      final responseJson = json.decode(_response);
-      _wordEnglish = responseJson['word_english'];
-      _wordTranslated = responseJson['word_language'];
-      _exampleSentence = responseJson['in_sentence'];
+      _isLoading = false;
+      _response = chatCompletion.choices.last.message.content?.first.text ?? 'No response'; // Use the last response
     });
   }
+
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-    body: Center( // Center the content
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: <Widget>[
-          DropdownButton<String>(
-            value: _selectedValue,
-            onChanged: _onDropdownChanged,
-            items: options.map<DropdownMenuItem<String>>((String value) {
-              return DropdownMenuItem<String>(
-                value: value,
-                child: Text(value),
-              );
-            }).toList(),
-          ),
-          SizedBox(height: 20),
-          if (_wordEnglish.isNotEmpty) ...[
-            Text(
-              'English Word: $_wordEnglish',
-              style: TextStyle(fontSize: 16),
+      appBar: AppBar(
+        title: Text('Chat with GPT'),
+      ),
+      body: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            TextField(
+              controller: _promptController,
+              decoration: InputDecoration(
+                labelText: 'Enter your prompt',
+                border: OutlineInputBorder(),
+              ),
+              onSubmitted: (_) => _sendPrompt(),
             ),
-            SizedBox(height: 10),
-            Text(
-              'Translated: $_wordTranslated',
-              style: TextStyle(fontSize: 16),
+            SizedBox(height: 20),
+            ElevatedButton(
+              onPressed: _sendPrompt,
+              child: Text('Send'),
             ),
-            SizedBox(height: 10),
-            Text(
-              'Example Sentence: $_exampleSentence',
-              style: TextStyle(fontSize: 16),
+            SizedBox(height: 20),
+            Expanded( // Wrap the response area in an Expanded widget
+              child: SingleChildScrollView( // Make the response scrollable
+                child: _isLoading
+                    ? Center(child: CircularProgressIndicator())
+                    : Text(_response, style: TextStyle(fontSize: 16)),
+              ),
             ),
           ],
-        ],
+        ),
       ),
-    ),
-  );
+    );
   }
 }
+

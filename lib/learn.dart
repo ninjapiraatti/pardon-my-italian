@@ -62,6 +62,7 @@ class _ChatGPTViewState extends State<ChatGPTView> {
       appBar: AppBar(
         title: Text('Chat with GPT'),
       ),
+      /*
       body: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
@@ -90,6 +91,49 @@ class _ChatGPTViewState extends State<ChatGPTView> {
             ),
           ],
         ),
+      ),
+      */
+      body: Column(
+        children: [
+          Expanded(
+            child: ListView(
+              padding: const EdgeInsets.all(16.0),
+              children: [
+                if (_response.isNotEmpty)
+                  Text(_response, style: TextStyle(fontSize: 16)),
+                if (_isLoading)
+                  Center(child: CircularProgressIndicator()),
+              ],
+            ),
+          ),
+          Align(
+            alignment: Alignment.bottomCenter,
+            child: Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  TextField(
+                    controller: _promptController,
+                    decoration: InputDecoration(
+                      labelText: 'Enter your prompt',
+                      border: OutlineInputBorder(),
+                      suffixIcon: IconButton(
+                        icon: Icon(Icons.clear),
+                        onPressed: _promptController.clear,
+                      ),
+                    ),
+                  ),
+                  SizedBox(height: 10),
+                  ElevatedButton(
+                    onPressed: _sendPrompt,
+                    child: Text('Send'),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

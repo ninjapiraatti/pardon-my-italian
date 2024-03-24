@@ -124,7 +124,7 @@ class _ChatGPTViewState extends State<ChatGPTView> {
                       ),
                     ),
                   ),
-                  SizedBox(height: 10),
+                  SizedBox(height: 30),
                   ElevatedButton(
                     onPressed: _sendPrompt,
                     child: Text('Send'),

@@ -17,6 +17,19 @@ Future main() async {
   runApp(PardonApp(openAI: openAI));
 }
 
+final ThemeData darkTheme = ThemeData(
+  brightness: Brightness.dark,
+  primaryColor: const Color(0xFFFFC300),
+  primaryColorLight: const Color(0xFFFFD60A),
+  primaryColorDark: const Color(0xFF003566),
+  colorScheme: const ColorScheme.dark(
+    primary: Color(0xFFFFC300),
+    surfaceVariant: Color(0xFF001D3D),
+    background: Color(0xFF000814),
+  ),
+  useMaterial3: true,
+);
+
 class PardonApp extends StatelessWidget {
   final OpenAI openAI;
   PardonApp({super.key, required this.openAI});
@@ -25,6 +38,10 @@ class PardonApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       home: PardonMyItalian(openAI: openAI),
+      title: 'Pardon My Italian',
+      themeMode: ThemeMode.dark,
+      darkTheme: darkTheme,
+      theme: darkTheme,
     );
   }
 }
@@ -64,9 +81,6 @@ class _PardonMyItalianState
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('BottomNavigationBar Sample'),
-      ),
       body: Center(
         child: _widgetOptions.elementAt(_selectedIndex),
       ),

@@ -14,16 +14,16 @@ class _ChatGPTViewState extends State<ChatGPTView> {
   final TextEditingController _promptController = TextEditingController();
   bool _isLoading = false;
   String _response = '';
+  List<OpenAIChatCompletionChoiceMessageModel> _messageHistory = [];
 
-  void _sendPrompt() async {
-    if (_promptController.text.isEmpty) {
-      return;
-    }
-    setState(() {
-      _isLoading = true;
-    });
-    
-    // Define the initial system message
+  @override
+  void initState() {
+    super.initState();
+    // Initialize the chat with a system message
+    _initChatWithSystemMessage();
+  }
+
+  void _initChatWithSystemMessage() {
     final OpenAIChatCompletionChoiceMessageModel systemMessage = OpenAIChatCompletionChoiceMessageModel(
       content: [
         OpenAIChatCompletionChoiceMessageContentItemModel.text(
@@ -32,8 +32,18 @@ class _ChatGPTViewState extends State<ChatGPTView> {
       ],
       role: OpenAIChatMessageRole.assistant,
     );
+    _messageHistory.add(systemMessage);
+  }
 
-    // Define the user's message
+  void _sendPrompt() async {
+    if (_promptController.text.isEmpty) {
+      return;
+    }
+    setState(() {
+      _isLoading = true;
+    });
+
+    // User's message
     final OpenAIChatCompletionChoiceMessageModel userMessage = OpenAIChatCompletionChoiceMessageModel(
       content: [
         OpenAIChatCompletionChoiceMessageContentItemModel.text(_promptController.text),
@@ -41,20 +51,33 @@ class _ChatGPTViewState extends State<ChatGPTView> {
       role: OpenAIChatMessageRole.user,
     );
 
-    // Combine system and user messages for the API call
+    List<OpenAIChatCompletionChoiceMessageModel> tempHistory = List.from(_messageHistory)..add(userMessage);
+
+    // Trim based on character count
+    int totalLength = tempHistory.fold(0, (int length, message) => length + (message.content?.first.text ?? '').length);
+    const int maxLength = 1024; // Adjust as needed
+    while (totalLength > maxLength && tempHistory.isNotEmpty) {
+      totalLength -= (tempHistory.first.content?.first.text ?? '').length;
+      tempHistory.removeAt(1);
+    }
+
     final chatCompletion = await widget.openAI.chat.create(
       model: "gpt-4-turbo-preview",
-      messages: [systemMessage, userMessage], // Send both messages
+      messages: tempHistory,
       temperature: 0.7,
       maxTokens: 1500,
     );
 
+    final latestResponse = chatCompletion.choices.last.message;
+    tempHistory.add(latestResponse); // Update tempHistory with the latest response for accurate character counting
+
     setState(() {
       _isLoading = false;
-      _response = chatCompletion.choices.last.message.content?.first.text ?? 'No response'; // Use the last response
+      _response += '\n${latestResponse.content?.first.text ?? 'No response'}';
+      _messageHistory = List.from(tempHistory); // Update the actual history with the trimmed version
+      _promptController.clear();
     });
   }
-
 
   @override
   Widget build(BuildContext context) {
@@ -62,37 +85,6 @@ class _ChatGPTViewState extends State<ChatGPTView> {
       appBar: AppBar(
         title: Text('Chat with GPT'),
       ),
-      /*
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            TextField(
-              controller: _promptController,
-              decoration: InputDecoration(
-                labelText: 'Enter your prompt',
-                border: OutlineInputBorder(),
-              ),
-              onSubmitted: (_) => _sendPrompt(),
-            ),
-            SizedBox(height: 20),
-            ElevatedButton(
-              onPressed: _sendPrompt,
-              child: Text('Send'),
-            ),
-            SizedBox(height: 20),
-            Expanded( // Wrap the response area in an Expanded widget
-              child: SingleChildScrollView( // Make the response scrollable
-                child: _isLoading
-                    ? Center(child: CircularProgressIndicator())
-                    : Text(_response, style: TextStyle(fontSize: 16)),
-              ),
-            ),
-          ],
-        ),
-      ),
-      */
       body: Column(
         children: [
           Expanded(
@@ -106,31 +98,28 @@ class _ChatGPTViewState extends State<ChatGPTView> {
               ],
             ),
           ),
-          Align(
-            alignment: Alignment.bottomCenter,
-            child: Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  TextField(
-                    controller: _promptController,
-                    decoration: InputDecoration(
-                      labelText: 'Enter your prompt',
-                      border: OutlineInputBorder(),
-                      suffixIcon: IconButton(
-                        icon: Icon(Icons.clear),
-                        onPressed: _promptController.clear,
-                      ),
+          Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  controller: _promptController,
+                  decoration: InputDecoration(
+                    labelText: 'Enter your prompt',
+                    border: OutlineInputBorder(),
+                    suffixIcon: IconButton(
+                      icon: Icon(Icons.clear),
+                      onPressed: _promptController.clear,
                     ),
                   ),
-                  SizedBox(height: 30),
-                  ElevatedButton(
-                    onPressed: _sendPrompt,
-                    child: Text('Send'),
-                  ),
-                ],
-              ),
+                ),
+                SizedBox(height: 30),
+                ElevatedButton(
+                  onPressed: _sendPrompt,
+                  child: Text('Send'),
+                ),
+              ],
             ),
           ),
         ],
@@ -138,4 +127,3 @@ class _ChatGPTViewState extends State<ChatGPTView> {
     );
   }
 }
-
